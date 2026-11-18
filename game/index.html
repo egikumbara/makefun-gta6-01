@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solmar Bay — Open-World Crime Game</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0b1020;font-family:Verdana,Arial,sans-serif;color:#fff}
+  #c{position:fixed;inset:0;display:block}
+  .hidden{display:none!important}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  #topleft{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.55);border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.5}
+  #stars{color:#ffd23f;font-size:20px;letter-spacing:2px}
+  #healthbar{width:180px;height:12px;background:#333;border:1px solid #777;border-radius:6px;overflow:hidden;margin-top:4px}
+  #healthfill{height:100%;width:100%;background:linear-gradient(90deg,#37d67a,#a8e063)}
+  #objective{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);border-radius:8px;padding:8px 16px;font-size:15px;text-align:center;max-width:520px}
+  #objective b{color:#ffd23f}
+  #minimap{position:absolute;right:12px;top:12px;border:2px solid rgba(255,255,255,.7);border-radius:8px;background:#16213a}
+  #clock{position:absolute;right:12px;top:172px;background:rgba(0,0,0,.55);border-radius:8px;padding:6px 10px;font-size:14px}
+  #msg{position:absolute;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.65);border-radius:8px;padding:10px 18px;font-size:16px;text-align:center;max-width:640px}
+  #dialogue{position:absolute;bottom:170px;left:50%;transform:translateX(-50%);background:rgba(20,10,40,.8);border:1px solid #b388ff;border-radius:8px;padding:10px 18px;font-size:15px;max-width:640px}
+  #dialogue .who{color:#b388ff;font-weight:bold}
+  #controls{position:absolute;bottom:12px;left:12px;background:rgba(0,0,0,.5);border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.6}
+  #crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;color:#fff;text-shadow:0 0 4px #000}
+  #speedo{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.55);border-radius:8px;padding:8px 12px;font-size:16px;text-align:right}
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;text-align:center;background:radial-gradient(ellipse at center,#1b2a52 0%,#0b1020 70%)}
+  .screen h1{font-size:52px;margin:0;color:#ffd23f;text-shadow:3px 3px 0 #c0392b,6px 6px 12px #000;letter-spacing:2px}
+  .screen h2{font-size:20px;color:#9fd8ff;margin:8px 0 24px;font-weight:normal}
+  .screen p{max-width:640px;font-size:15px;line-height:1.7;color:#dfe8ff}
+  .btn{pointer-events:auto;cursor:pointer;background:#e74c3c;color:#fff;border:none;border-radius:10px;padding:14px 34px;font-size:20px;font-weight:bold;margin-top:18px;box-shadow:0 4px 0 #922b21}
+  .btn:hover{background:#ff6b5e}
+  .btn.alt{background:#2e86c1;box-shadow:0 4px 0 #1a5276}
+  .btn.alt:hover{background:#3d9bd6}
+  #wasted h1{color:#ff5252}
+  kbd{background:#333;border:1px solid #777;border-radius:4px;padding:1px 6px;font-size:12px}
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud" class="hidden">
+  <div id="topleft">
+    <div>$<span id="money">500</span> &nbsp; <span id="weapon">👊 Fists</span></div>
+    <div id="stars">☆☆☆☆☆</div>
+    <div id="healthbar"><div id="healthfill"></div></div>
+    <div>♥ <span id="health">100</span>/100</div>
+  </div>
+  <div id="objective">No mission — visit <b>Milo</b> at the yellow marker</div>
+  <canvas id="minimap" width="170" height="170"></canvas>
+  <div id="clock">☀️ 12:00</div>
+  <div id="msg" class="hidden"></div>
+  <div id="dialogue" class="hidden"></div>
+  <div id="controls">
+    <kbd>W A S D</kbd> move &nbsp; <kbd>Shift</kbd> run &nbsp; <kbd>Space</kbd> jump<br>
+    <kbd>E</kbd> enter / exit car &nbsp; <kbd>F</kbd> punch &nbsp; <kbd>1</kbd>/<kbd>2</kbd> weapons<br>
+    Mouse drag: camera &nbsp; Click: shoot &nbsp; <kbd>P</kbd> pause &nbsp; <kbd>M</kbd> mute
+  </div>
+  <div id="crosshair" class="hidden">+</div>
+  <div id="speedo" class="hidden">0 km/h</div>
+</div>
+
+<div id="start" class="screen">
+  <h1>SOLMAR BAY</h1>
+  <h2>An open-world crime game — sun, sea, and trouble</h2>
+  <p>You are <b>Rico Vale</b>, a wheelman fresh out of the Bayview docks. Milo Ferrante has work for you —
+  four jobs across Solmar Bay, from a simple car lift to the big score at the Meridian Bank.
+  Steal cars, dodge the Solmar Bay Police, earn cash, and don't get caught.</p>
+  <p><kbd>W A S D</kbd> move &nbsp; <kbd>E</kbd> steal / drive a car &nbsp; Click to shoot &nbsp; <kbd>F</kbd> punch</p>
+  <button class="btn" id="playBtn">▶ START GAME</button>
+  <button class="btn alt" id="continueBtn">↻ CONTINUE (saved game)</button>
+  <p style="font-size:12px;color:#8fa3c8">Original game. All characters, places and vehicles are invented. No affiliation with any commercial game.</p>
+</div>
+
+<div id="pause" class="screen hidden">
+  <h1>PAUSED</h1>
+  <p>Take a breath, Rico. The Bay isn't going anywhere.</p>
+  <button class="btn" id="resumeBtn">▶ RESUME</button>
+  <button class="btn alt" id="saveBtn">💾 SAVE GAME</button>
+  <button class="btn alt" id="quitBtn">🏠 QUIT TO MENU</button>
+</div>
+
+<div id="wasted" class="screen hidden">
+  <h1>WASTED</h1>
+  <p id="wastedText">The Solmar Bay Police finally caught up with you.</p>
+  <button class="btn" id="retryBtn">↻ TRY AGAIN</button>
+  <button class="btn alt" id="menuBtn">🏠 MAIN MENU</button>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
